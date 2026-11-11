@@ -1,4 +1,5 @@
 import { getSetting, setSetting, getUser, updateUser, addWarning, clearWarnings } from '../database/store.js';
+import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { mentionedJids, isGroupAdmin, isBotAdmin, jidNumber } from '../lib/helpers.js';
 
 const games = new Map();
@@ -7,7 +8,7 @@ const inGroup = chat => chat.endsWith('@g.us');
 const adminGate = async c => c.isOwner || await isGroupAdmin(c.sock, c.chat, c.sender);
 
 export const commands = [
-  { name: 'menu', aliases: ['help', 'allmenu'], category: 'GENERAL', description: 'Show command menu', run: c => send(c.sock, c.chat, c.menu, c.message) },
+  { name: 'menu', aliases: ['help', 'allmenu'], category: 'GENERAL', description: 'Show command menu', run: showMenu },
   { name: 'menu2', category: 'GENERAL', description: 'Show compact menu', run: c => send(c.sock, c.chat, commands.map(x => `${c.config.prefix}${x.name}`).join('  '), c.message) },
   { name: 'alive', category: 'GENERAL', description: 'Bot status', run: c => send(c.sock, c.chat, `╭─「 ${c.config.name} 」\n│ Status: Online ✓\n│ Version: 3.0.0\n│ Mode: ${c.config.mode}\n╰────────────`, c.message) },
   { name: 'ping', category: 'GENERAL', description: 'Check response', run: c => send(c.sock, c.chat, 'Pong! 🏓', c.message) },
