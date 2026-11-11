@@ -25,31 +25,29 @@ for (const [alias, target] of Object.entries(savedAliases)) {
 }
 await mkdir(config.authDir, { recursive: true });
 let reconnecting = false;
-let pairingRequested = false;
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState(config.authDir);
   const { version } = await fetchLatestBaileysVersion();
   const sock = makeWASocket({
     version, auth: state, logger, printQRInTerminal: false,
-    browser: [config.name, 'Chrome', '3.0.0'],
+    browser: ['Ubuntu', 'Chrome', '3.0.0'],
     markOnlineOnConnect: false, syncFullHistory: false
   });
   sock.ev.on('creds.update', saveCreds);
-  if (!state.creds.registered && !pairingRequested) {
-    pairingRequested = true;
-    setTimeout(async () => {
+  let pairingRequested = false;
+  sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
+    if (qr && !state.creds.registered && !pairingRequested) {
+      pairingRequested = true;
       try {
         const pairingCode = await sock.requestPairingCode(config.pairingNumber);
         logger.info(`WHATSAPP PAIRING CODE: ${pairingCode}`);
-        logger.info('On your phone: WhatsApp → Linked devices → Link a device → Link with phone number instead.');
+        logger.info('On your phone: WhatsApp → Settings → Linked devices → Link a device → Link with phone number instead.');
       } catch (error) {
         pairingRequested = false;
-        logger.error({ error }, 'Could not generate WhatsApp pairing code. Check OWNER_NUMBER includes country code and digits only.');
+        logger.error({ error }, 'Could not generate WhatsApp pairing code. Check PAIRING_NUMBER uses country code and digits only.');
       }
-    }, 2000);
-  }
-  sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
+    }
     if (qr && state.creds.registered) qrcode.generate(qr, { small: true });
     if (connection === 'open') { reconnecting = false; logger.info(`Connected as ${sock.user?.id}`); }
     if (connection === 'close') {
