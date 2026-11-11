@@ -40,7 +40,7 @@ async function startBot() {
     pairingRequested = true;
     setTimeout(async () => {
       try {
-        const pairingCode = await sock.requestPairingCode(config.owner);
+        const pairingCode = await sock.requestPairingCode(config.pairingNumber);
         logger.info(`WHATSAPP PAIRING CODE: ${pairingCode}`);
         logger.info('On your phone: WhatsApp → Linked devices → Link a device → Link with phone number instead.');
       } catch (error) {
