@@ -11,9 +11,15 @@ export async function initStore(connectionString) {
     return;
   }
   pool = new Pool({ connectionString, ssl: process.env.PGSSL === 'disable' ? false : { rejectUnauthorized: false } });
-  await pool.query('CREATE TABLE IF NOT EXISTS bot_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
-  await pool.query('CREATE TABLE IF NOT EXISTS bot_users (jid TEXT PRIMARY KEY, balance BIGINT NOT NULL DEFAULT 0, experience BIGINT NOT NULL DEFAULT 0, last_daily TIMESTAMPTZ, last_work TIMESTAMPTZ)');
-  await pool.query('CREATE TABLE IF NOT EXISTS bot_warnings (jid TEXT NOT NULL, chat TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(jid, chat))');
+  try {
+    await pool.query('CREATE TABLE IF NOT EXISTS bot_settings (setting_key TEXT PRIMARY KEY, setting_value TEXT NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())');
+    await pool.query('CREATE TABLE IF NOT EXISTS bot_users (jid TEXT PRIMARY KEY, balance BIGINT NOT NULL DEFAULT 0, experience BIGINT NOT NULL DEFAULT 0, last_daily TIMESTAMPTZ, last_work TIMESTAMPTZ)');
+    await pool.query('CREATE TABLE IF NOT EXISTS bot_warnings (jid TEXT NOT NULL, chat TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(jid, chat))');
+  } catch (error) {
+    console.warn(`[store] PostgreSQL unavailable (${error.code || error.message}); continuing with temporary in-memory storage. Fix DATABASE_URL/networking for persistence.`);
+    await pool.end().catch(() => {});
+    pool = undefined;
+  }
 }
 export async function getSetting(key, fallback = null) {
   if (!pool) return memory.has(key) ? memory.get(key) : fallback;
