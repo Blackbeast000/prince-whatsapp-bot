@@ -6,7 +6,7 @@ export function buildMenu(prefix, botName, mode, commands) {
     groups.get(key).push(`${prefix}${c.name}${c.usage ? ` ${c.usage}` : ''}`);
   }
   const sections = [...groups].map(([key, values]) =>
-    `╭─「 ${key} 」\\n${values.map(v => `│ • ${v}`).join('\\n')}\\n╰────────────`
-  ).join('\\n\\n');
-  return `╭━━〔 ${botName} 〕━━╮\\n│ Version: 3.0.0\\n│ Mode: ${mode}\\n│ Prefix: ${prefix}\\n│ Commands: ${commands.length}\\n╰━━━━━━━━━━━━━━╯\\n\\n${sections}\\n\\nᴘᴏᴡᴇʀᴇᴅ ʙʏ 𓉳 𝐏𝐫𝐢𝐧𝐜𝐞 🥀`;
+    `╭─「 ${key} 」\n${values.map(v => `│ • ${v}`).join('\n')}\n╰────────────`
+  ).join('\n\n');
+  return `╭━━〔 ${botName} 〕━━╮\n│ Version: 3.0.0\n│ Mode: ${mode}\n│ Prefix: ${prefix}\n│ Commands: ${commands.length}\n╰━━━━━━━━━━━━━━╯\n\n▶ Type ${prefix}menu2 for compact menu\n\n${sections}\n\n© Powered by 𓉳 𝐏𝐫𝐢𝐧𝐜𝐞 🥀`;
 }
