@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 export const config = {
   owner: (process.env.OWNER_NUMBER || '2347053098253').replace(/\\D/g, ''),
+  pairingNumber: (process.env.PAIRING_NUMBER || process.env.OWNER_NUMBER || '2347053098253').replace(/\\D/g, ''),
   name: process.env.BOT_NAME || '𓉳 𝐏𝐫𝐢𝐧𝐜𝐞 🥀',
   prefix: process.env.PREFIX || '.',
   mode: (process.env.BOT_MODE || 'public').toLowerCase(),
