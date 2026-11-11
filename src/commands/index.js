@@ -1,5 +1,4 @@
 import { getSetting, setSetting, getUser, updateUser, addWarning, clearWarnings } from '../database/store.js';
-import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { mentionedJids, isGroupAdmin, isBotAdmin, jidNumber } from '../lib/helpers.js';
 
 const games = new Map();
@@ -10,7 +9,7 @@ const adminGate = async c => c.isOwner || await isGroupAdmin(c.sock, c.chat, c.s
 export const commands = [
   { name: 'menu', aliases: ['help', 'allmenu'], category: 'GENERAL', description: 'Show command menu', run: showMenu },
   { name: 'menu2', category: 'GENERAL', description: 'Show compact menu', run: c => send(c.sock, c.chat, commands.map(x => `${c.config.prefix}${x.name}`).join('  '), c.message) },
-  { name: 'alive', category: 'GENERAL', description: 'Bot status', run: c => send(c.sock, c.chat, `╭─「 ${c.config.name} 」\n│ Status: Online ✓\n│ Version: 3.0.0\n│ Mode: ${c.config.mode}\n╰────────────`, c.message) },
+  { name: 'alive', category: 'GENERAL', description: 'Bot status', run: alive },
   { name: 'ping', category: 'GENERAL', description: 'Check response', run: c => send(c.sock, c.chat, 'Pong! 🏓', c.message) },
   { name: 'runtime', category: 'GENERAL', description: 'Show uptime', run: c => send(c.sock, c.chat, `Runtime: ${Math.floor(process.uptime()/3600)}h ${Math.floor(process.uptime()%3600/60)}m`) },
   { name: 'owner', category: 'GENERAL', description: 'Show owner contact', run: c => c.sock.sendMessage(c.chat, { contacts: [{ displayName: 'Bot Owner', vcard: `BEGIN:VCARD\nVERSION:3.0\nFN:Bot Owner\nTEL;type=CELL;type=VOICE;waid=${c.config.owner}:+${c.config.owner}\nEND:VCARD` }] }) },
@@ -38,8 +37,34 @@ export const commands = [
   { name: 'open', category: 'GROUP', description: 'Allow all members to message', run: async c => { if(!inGroup(c.chat)||!await adminGate(c)||!await isBotAdmin(c.sock,c.chat))return send(c.sock,c.chat,'Group admins and bot admin required.'); await c.sock.groupSettingUpdate(c.chat,'not_announcement'); return send(c.sock,c.chat,'Group opened.'); } },
   { name: 'jid', category: 'UTILITY', description: 'Show chat and sender IDs', run: c => send(c.sock,c.chat,`Chat: ${c.chat}\nYour ID: ${c.sender}\nMentions: ${mentionedJids(c.message).join(', ')||'None'}`) },
   { name: 'time', category: 'UTILITY', description: 'Show local time', run: c => send(c.sock,c.chat,new Intl.DateTimeFormat('en-NG',{dateStyle:'full',timeStyle:'long',timeZone:c.config.timezone}).format(new Date())) },
-  { name: 'quote', category: 'FUN', description: 'Random inspirational quote', run: c => { const q=['Great things are done by a series of small things brought together. — Van Gogh','It always seems impossible until it is done. — Nelson Mandela','Do what you can, with what you have, where you are. — Theodore Roosevelt']; return send(c.sock,c.chat,q[Math.floor(Math.random()*q.length)]); } }
+  { name: 'quote', category: 'FUN', description: 'Random inspirational quote', run: c => { const q=['Great things are done by a series of small things brought together. — Van Gogh','It always seems impossible until it is done. — Nelson Mandela','Do what you can, with what you have, where you are. — Theodore Roosevelt']; return send(c.sock,c.chat,q[Math.floor(Math.random()*q.length)]); } },
+
+  { name: 'setalive', category: 'OWNER', usage: '<text>', ownerOnly: true, description: 'Set custom alive message', run: async c => { const v=c.args.join(' ').trim(); if(!v)return send(c.sock,c.chat,'Usage: .setalive <text>'); await setSetting('alive_text',v); return send(c.sock,c.chat,'Alive message saved.'); } },
+  { name: 'setmenuimage', category: 'OWNER', usage: '<https image URL|off>', ownerOnly: true, description: 'Set menu and alive picture', run: async c => { const v=c.args[0]; if(!v)return send(c.sock,c.chat,'Usage: .setmenuimage <https image URL|off>'); if(v.toLowerCase()==='off'){await setSetting('menu_image','');return send(c.sock,c.chat,'Menu image disabled.');} try {const u=new URL(v); if(u.protocol!=='https:')throw Error();}catch{return send(c.sock,c.chat,'Please provide a valid HTTPS image URL.');} await setSetting('menu_image',v); return send(c.sock,c.chat,'Menu picture saved. Use .menu to preview it.'); } },
+  { name: 'profile', category: 'GENERAL', description: 'Show your bot profile details', run: async c => {const u=await getUser(c.sender);return send(c.sock,c.chat,`👤 Profile\nID: ${jidNumber(c.sender)}\nWallet: ₦${Number(u.balance).toLocaleString()}\nXP: ${u.experience}`);} },
+  { name: 'support', category: 'GENERAL', description: 'Show support contact', run: c => send(c.sock,c.chat,`For support, contact the bot owner: +${c.config.owner}`) },
+  { name: 'feedback', category: 'GENERAL', usage: '<message>', description: 'Send feedback to owner', run: async c => {const v=c.args.join(' ').trim();if(!v)return send(c.sock,c.chat,'Usage: .feedback <message>');await c.sock.sendMessage(`${c.config.owner}@s.whatsapp.net`,{text:`Bot feedback from ${c.sender}:\n${v}`});return send(c.sock,c.chat,'Thank you. Your feedback was sent.');} },
+  { name: 'totalcmd', category: 'OWNER', ownerOnly: true, description: 'Count registered commands', run: c => send(c.sock,c.chat,`Registered commands: ${commands.length}`) },
+  { name: 'reactto', category: 'INTERACTIVE', usage: '<emoji> (reply to message)', description: 'React to a message', run: async c => {const emoji=c.args[0];if(!emoji)return send(c.sock,c.chat,'Usage: .reactto <emoji> while replying to a message.');const ctx=c.message.message?.extendedTextMessage?.contextInfo;if(!ctx?.stanzaId)return send(c.sock,c.chat,'Reply to the message you want to react to.');await c.sock.sendMessage(c.chat,{react:{text:emoji,key:{remoteJid:c.chat,id:ctx.stanzaId,participant:ctx.participant}}});} },
+  { name: 'setcmd', category: 'OWNER', usage: '<old>-to-<new>', ownerOnly: true, description: 'Create a persistent command alias', run: async c => {const spec=c.args.join('').split('-to-');if(spec.length!==2)return send(c.sock,c.chat,'Usage: .setcmd ping-to-check');const [oldName,newName]=spec.map(x=>x.toLowerCase());const target=commands.find(x=>x.name===oldName||x.aliases?.includes(oldName));if(!target||!/^[a-z0-9_-]{1,32}$/.test(newName))return send(c.sock,c.chat,'Unknown original command or invalid new name.');const aliases=JSON.parse(await getSetting('command_aliases','{}'));aliases[newName]=target.name;await setSetting('command_aliases',JSON.stringify(aliases));return send(c.sock,c.chat,`Saved alias .${newName} → .${target.name}. Use .com-${oldName}-to-${newName} to activate immediately.`);} },
+  { name: 'listcmd', category: 'OWNER', ownerOnly: true, description: 'List custom command aliases', run: async c => {const aliases=JSON.parse(await getSetting('command_aliases','{}'));return send(c.sock,c.chat,Object.keys(aliases).length?Object.entries(aliases).map(([a,t])=>`.${a} → .${t}`).join('\n'):'No custom aliases saved.');} },
+  { name: 'delcmd', category: 'OWNER', usage: '<alias>', ownerOnly: true, description: 'Delete custom alias', run: async c => {const a=(c.args[0]||'').toLowerCase();const aliases=JSON.parse(await getSetting('command_aliases','{}'));if(!aliases[a])return send(c.sock,c.chat,'Alias not found.');delete aliases[a];await setSetting('command_aliases',JSON.stringify(aliases));return send(c.sock,c.chat,'Alias deleted. The alias is removed after restart.');} },
+
 ];
+
+
+async function showMenu(c) {
+  const image = await getSetting('menu_image', '');
+  if (image) { try { return await c.sock.sendMessage(c.chat,{image:{url:image},caption:c.menu},{quoted:c.message}); } catch {} }
+  return send(c.sock,c.chat,c.menu,c.message);
+}
+async function alive(c) {
+  const custom = await getSetting('alive_text','');
+  const image = await getSetting('menu_image','');
+  const caption = custom || `╭─「 ${c.config.name} 」\n│ Status: Online ✓\n│ Version: 3.0.0\n│ Mode: ${c.config.mode}\n│ Prefix: ${c.config.prefix}\n╰────────────`;
+  if (image) { try { return await c.sock.sendMessage(c.chat,{image:{url:image},caption},{quoted:c.message}); } catch {} }
+  return send(c.sock,c.chat,caption,c.message);
+}
 
 function board(b) { return `${b[0]} | ${b[1]} | ${b[2]}\n--+---+--\n${b[3]} | ${b[4]} | ${b[5]}\n--+---+--\n${b[6]} | ${b[7]} | ${b[8]}`; }
 function winner(b) { for(const [a,x,y] of [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]) if(b[a]!==' '&&b[a]===b[x]&&b[a]===b[y])return b[a]; return null; }
