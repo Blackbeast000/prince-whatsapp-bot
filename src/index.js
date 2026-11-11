@@ -55,7 +55,7 @@ async function startBot() {
       const sender = message.key.participant || chat;
       const body = getText(message).trim();
       if (!body.startsWith(config.prefix)) continue;
-      const [trigger, ...args] = body.slice(config.prefix.length).trim().split(/\\s+/);
+      const [trigger, ...args] = body.slice(config.prefix.length).trim().split(/\s+/);
       const name = (trigger || '').toLowerCase();
       const isOwner = jidNumber(sender) === config.owner;
       const alias = name.match(/^com-([a-z0-9_-]+)-to-([a-z0-9_-]+)$/);
