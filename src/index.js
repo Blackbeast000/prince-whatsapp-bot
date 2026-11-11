@@ -25,6 +25,7 @@ for (const [alias, target] of Object.entries(savedAliases)) {
 }
 await mkdir(config.authDir, { recursive: true });
 let reconnecting = false;
+let pairingRequested = false;
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState(config.authDir);
@@ -35,8 +36,21 @@ async function startBot() {
     markOnlineOnConnect: false, syncFullHistory: false
   });
   sock.ev.on('creds.update', saveCreds);
+  if (!state.creds.registered && !pairingRequested) {
+    pairingRequested = true;
+    setTimeout(async () => {
+      try {
+        const pairingCode = await sock.requestPairingCode(config.owner);
+        logger.info(`WHATSAPP PAIRING CODE: ${pairingCode}`);
+        logger.info('On your phone: WhatsApp → Linked devices → Link a device → Link with phone number instead.');
+      } catch (error) {
+        pairingRequested = false;
+        logger.error({ error }, 'Could not generate WhatsApp pairing code. Check OWNER_NUMBER includes country code and digits only.');
+      }
+    }, 2000);
+  }
   sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
-    if (qr) qrcode.generate(qr, { small: true });
+    if (qr && state.creds.registered) qrcode.generate(qr, { small: true });
     if (connection === 'open') { reconnecting = false; logger.info(`Connected as ${sock.user?.id}`); }
     if (connection === 'close') {
       const code = lastDisconnect?.error?.output?.statusCode;
